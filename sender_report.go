@@ -257,3 +257,8 @@ func (r SenderReport) String() string {
 	out += fmt.Sprintf("\tProfile Extension Data: %v\n", r.ProfileExtensions)
 	return out
 }
+
+func (r *SenderReport) Getlen() int {
+	return r.len()
+}
+

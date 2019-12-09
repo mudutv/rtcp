@@ -128,3 +128,32 @@ func (r *ReceptionReport) Unmarshal(rawPacket []byte) error {
 func (r *ReceptionReport) len() int {
 	return receptionReportLength
 }
+
+func (r *ReceptionReport)SetTotalLost(totalLost int32){
+	clamp := int32(0)
+	value := int32(0)
+
+	if (totalLost >= 0 ){
+		if (totalLost > 0x07FFFFF){
+			clamp = 0x07FFFFF
+		}else {
+			clamp = totalLost
+		}
+	}else{
+		if (-totalLost > 0x0800000){
+			clamp = 0x0800000
+		}else {
+			clamp = -totalLost
+		}
+	}
+
+	if (totalLost >= 0){
+		value = clamp & 0x07FFFFF
+	}else {
+		value =  clamp | 0x0800000
+	}
+	r.TotalLost = uint32(value)
+
+
+
+}

@@ -350,3 +350,7 @@ func (s *SourceDescription) String() string {
 	}
 	return out
 }
+
+func (r *SourceDescription) Getlen() int {
+	return r.len()
+}
