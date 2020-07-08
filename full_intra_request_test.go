@@ -5,26 +5,69 @@ import (
 	"testing"
 )
 
-func TestPictureLossIndicationUnmarshal(t *testing.T) {
+func TestFullIntraRequestUnmarshal(t *testing.T) {
 	for _, test := range []struct {
 		Name      string
 		Data      []byte
-		Want      PictureLossIndication
+		Want      FullIntraRequest
 		WantError error
 	}{
 		{
 			Name: "valid",
 			Data: []byte{
-				// v=2, p=0, FMT=1, PSFB, len=1
-				0x81, 0xce, 0x00, 0x02,
+				// v=2, p=0, FMT=4, PSFB, len=3
+				0x84, 0xce, 0x00, 0x03,
 				// ssrc=0x0
 				0x00, 0x00, 0x00, 0x00,
 				// ssrc=0x4bc4fcb4
 				0x4b, 0xc4, 0xfc, 0xb4,
+				// ssrc=0x12345678
+				0x12, 0x34, 0x56, 0x78,
+				// Seqno=0x42
+				0x42, 0x00, 0x00, 0x00,
 			},
-			Want: PictureLossIndication{
+			Want: FullIntraRequest{
 				SenderSSRC: 0x0,
 				MediaSSRC:  0x4bc4fcb4,
+				FIR: []FIREntry{
+					{
+						SSRC:           0x12345678,
+						SequenceNumber: 0x42,
+					},
+				},
+			},
+		},
+		{
+			Name: "also valid",
+			Data: []byte{
+				// v=2, p=0, FMT=4, PSFB, len=3
+				0x84, 0xce, 0x00, 0x05,
+				// ssrc=0x0
+				0x00, 0x00, 0x00, 0x00,
+				// ssrc=0x4bc4fcb4
+				0x4b, 0xc4, 0xfc, 0xb4,
+				// ssrc=0x12345678
+				0x12, 0x34, 0x56, 0x78,
+				// Seqno=0x42
+				0x42, 0x00, 0x00, 0x00,
+				// ssrc=0x98765432
+				0x98, 0x76, 0x54, 0x32,
+				// Seqno=0x57
+				0x57, 0x00, 0x00, 0x00,
+			},
+			Want: FullIntraRequest{
+				SenderSSRC: 0x0,
+				MediaSSRC:  0x4bc4fcb4,
+				FIR: []FIREntry{
+					{
+						SSRC:           0x12345678,
+						SequenceNumber: 0x42,
+					},
+					{
+						SSRC:           0x98765432,
+						SequenceNumber: 0x57,
+					},
+				},
 			},
 		},
 		{
@@ -40,36 +83,46 @@ func TestPictureLossIndicationUnmarshal(t *testing.T) {
 				0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00,
 			},
 			WantError: errBadVersion,
 		},
 		{
 			Name: "wrong type",
 			Data: []byte{
-				// v=2, p=0, FMT=1, RR, len=1
-				0x81, 0xc9, 0x00, 0x02,
+				// v=2, p=0, FMT=4, RR, len=3
+				0x84, 0xc9, 0x00, 0x03,
 				// ssrc=0x0
 				0x00, 0x00, 0x00, 0x00,
 				// ssrc=0x4bc4fcb4
 				0x4b, 0xc4, 0xfc, 0xb4,
+				// ssrc=0x12345678
+				0x12, 0x34, 0x56, 0x78,
+				// Seqno=0x42
+				0x42, 0x00, 0x00, 0x00,
 			},
 			WantError: errWrongType,
 		},
 		{
 			Name: "wrong fmt",
 			Data: []byte{
-				// v=2, p=0, FMT=2, RR, len=1
-				0x82, 0xc9, 0x00, 0x02,
+				// v=2, p=0, FMT=2, PSFB, len=3
+				0x82, 0xce, 0x00, 0x03,
 				// ssrc=0x0
 				0x00, 0x00, 0x00, 0x00,
 				// ssrc=0x4bc4fcb4
 				0x4b, 0xc4, 0xfc, 0xb4,
+				// ssrc=0x12345678
+				0x12, 0x34, 0x56, 0x78,
+				// Seqno=0x42
+				0x42, 0x00, 0x00, 0x00,
 			},
 			WantError: errWrongType,
 		},
 	} {
-		var pli PictureLossIndication
-		err := pli.Unmarshal(test.Data)
+		var fir FullIntraRequest
+		err := fir.Unmarshal(test.Data)
 		if got, want := err, test.WantError; got != want {
 			t.Fatalf("Unmarshal %q rr: err = %v, want %v", test.Name, got, want)
 		}
@@ -77,30 +130,38 @@ func TestPictureLossIndicationUnmarshal(t *testing.T) {
 			continue
 		}
 
-		if got, want := pli, test.Want; !reflect.DeepEqual(got, want) {
+		if got, want := fir, test.Want; !reflect.DeepEqual(got, want) {
 			t.Fatalf("Unmarshal %q rr: got %v, want %v", test.Name, got, want)
 		}
 	}
 }
 
-func TestPictureLossIndicationRoundTrip(t *testing.T) {
+func TestFullIntraRequestRoundTrip(t *testing.T) {
 	for _, test := range []struct {
 		Name      string
-		Packet    PictureLossIndication
+		Packet    FullIntraRequest
 		WantError error
 	}{
 		{
 			Name: "valid",
-			Packet: PictureLossIndication{
+			Packet: FullIntraRequest{
 				SenderSSRC: 1,
 				MediaSSRC:  2,
+				FIR: []FIREntry{{
+					SSRC:           3,
+					SequenceNumber: 42,
+				}},
 			},
 		},
 		{
 			Name: "also valid",
-			Packet: PictureLossIndication{
+			Packet: FullIntraRequest{
 				SenderSSRC: 5000,
 				MediaSSRC:  6000,
+				FIR: []FIREntry{{
+					SSRC:           3,
+					SequenceNumber: 57,
+				}},
 			},
 		},
 	} {
@@ -112,7 +173,7 @@ func TestPictureLossIndicationRoundTrip(t *testing.T) {
 			continue
 		}
 
-		var decoded PictureLossIndication
+		var decoded FullIntraRequest
 		if err := decoded.Unmarshal(data); err != nil {
 			t.Fatalf("Unmarshal %q: %v", test.Name, err)
 		}
@@ -123,7 +184,7 @@ func TestPictureLossIndicationRoundTrip(t *testing.T) {
 	}
 }
 
-func TestPictureLossIndicationUnmarshalHeader(t *testing.T) {
+func TestFullIntraRequestUnmarshalHeader(t *testing.T) {
 	for _, test := range []struct {
 		Name      string
 		Data      []byte
@@ -134,21 +195,22 @@ func TestPictureLossIndicationUnmarshalHeader(t *testing.T) {
 			Name: "valid header",
 			Data: []byte{
 				// v=2, p=0, FMT=1, PSFB, len=1
-				0x81, 0xce, 0x00, 0x02,
+				0x84, 0xce, 0x00, 0x02,
 				// ssrc=0x0
 				0x00, 0x00, 0x00, 0x00,
 				// ssrc=0x4bc4fcb4
 				0x4b, 0xc4, 0xfc, 0xb4,
+				0x00, 0x00, 0x00, 0x00,
 			},
 			Want: Header{
-				Count:  FormatPLI,
+				Count:  FormatFIR,
 				Type:   TypePayloadSpecificFeedback,
-				Length: pliLength,
+				Length: 2,
 			},
 		},
 	} {
-		var pli PictureLossIndication
-		err := pli.Unmarshal(test.Data)
+		var fir FullIntraRequest
+		err := fir.Unmarshal(test.Data)
 		if got, want := err, test.WantError; got != want {
 			t.Fatalf("Unmarshal header %q rr: err = %v, want %v", test.Name, got, want)
 		}
@@ -156,7 +218,7 @@ func TestPictureLossIndicationUnmarshalHeader(t *testing.T) {
 			continue
 		}
 
-		if got, want := pli.Header(), test.Want; !reflect.DeepEqual(got, want) {
+		if got, want := fir.Header(), test.Want; !reflect.DeepEqual(got, want) {
 			t.Fatalf("Unmarshal header %q rr: got %v, want %v", test.Name, got, want)
 		}
 	}

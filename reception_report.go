@@ -129,6 +129,7 @@ func (r *ReceptionReport) len() int {
 	return receptionReportLength
 }
 
+//miaobinwei
 func (r *ReceptionReport)SetTotalLost(totalLost int32){
 	clamp := int32(0)
 	value := int32(0)

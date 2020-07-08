@@ -258,7 +258,7 @@ func (r SenderReport) String() string {
 	return out
 }
 
+//miaobinwei
 func (r *SenderReport) Getlen() int {
 	return r.len()
 }
-

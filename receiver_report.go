@@ -193,8 +193,7 @@ func (r ReceiverReport) String() string {
 	return out
 }
 
-
+//miaobinwei
 func (r *ReceiverReport) Getlen() int {
 	return r.len()
 }
-
